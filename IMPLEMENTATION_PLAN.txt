@@ -1,22 +1,49 @@
+# План Реализации: LATEX VISION (SVI 2.0 Pro)
 
-# SVI 2.0 Pro - Implementation Plan
+Цель: Создание платформы **"Elastic Reality"** для генерации кинематографичных сцен с промышленной точностью.
 
-Step 1-5: UI, Characters & Direction (DONE)
+---
 
-Step 6: GPU Cloud & API Bridge (CURRENT)
-- Build a FastAPI middleware to handle RunPod Serverless calls.
-- Implement "Warm Start" logic to reduce generation wait time.
-- Create a shared S3 bucket for "Anchor Frames" between Web and Cloud.
+## ШАГ 1: ФУНДАМЕНТ И ИДЕНТИЧНОСТЬ (ВЫПОЛНЕНО)
+**Задача:** Создать "Vision Terminal" и "Identity Matrix".
+1.  [x] **Интерфейс Консоли:** Тема Latex Onyx (Zinc-950), адаптивный лейаут.
+2.  [x] **Identity Matrix (Реестр Сущностей):** 
+    *   Реализован `CastManager.tsx` с поддержкой DNA-экстракции.
+    *   Интегрирован Gemini 3 для извлечения физических инвариантов.
+3.  [x] **Локализация:** Полная поддержка RU/EN (Industrial стиль).
+4.  [x] **Хранилище Реальности:** IndexedDB (Dexie) и OPFS для видео-кэша.
 
-Step 7: Professional Pipeline
-- Integrate IndexedDB for storing multi-GB productions in-browser.
-- Implement "Master Video" stitching logic (Server-side FFmpeg).
+---
 
-Step 8: Telegram Companion Bot
-- Develop a Python-based bot using `python-telegram-bot` (async).
-- Connect the bot to the same API Bridge as the web app.
-- Map "Director Options" to Telegram Inline Buttons.
+## ШАГ 2: СИНТЕТИЧЕСКИЙ РЕЖИССЕР (ВЫПОЛНЕНО)
+**Задача:** Реализовать логику "Molding & Trajectories".
+1.  [x] **Точка Переключения (Switch Point):** Логика переключения между ручным вводом и Траекториями.
+2.  [x] **Профессиональный Профиль:** Управление биллингом (Кредиты), очистка кэша и экспорт данных.
+3.  [x] **Гибридная Визуализация:** Синхронизация Ленты и Графа Реальности.
 
-Step 9: DevOps Hardening
-- Setup CI/CD for Docker images (RunPod Workers).
-- Optimize Network Volumes to cache Wan 2.2 (14B) weights.
+---
+
+## ШАГ 3: LATEX CLOUD BRIDGE (ТЕКУЩИЙ)
+**Задача:** Подключить "Latex Core" через API RunPod.
+
+1.  **API Клиент:**
+    *   Реализовать `sviApi.renderNode` -> POST на RunPod Serverless Endpoint.
+    *   Payload: `prompt` (Anchor + Delta), `anchor_image`.
+
+2.  **Обработка Ассетов (OPFS):**
+    *   Автоматическое скачивание видео в локальный медиа-кэш.
+    *   Извлечение **Anchor Frame** для следующей итерации "сшивания".
+
+---
+
+## ШАГ 4: МОБИЛЬНЫЙ ТЕРМИНАЛ (ПЛАН)
+**Задача:** Удаленное управление фермой через Telegram.
+
+1.  **Webhook Архитектура:** Бот для мониторинга рендеров.
+2.  **Уведомления:** Пуш о завершении синтеза.
+
+---
+
+## ШАГ 5: ЗАПУСК
+1.  **Биллинг:** Финализация системы квот Credits.
+2.  **Стресс-тест:** Проверка "эластичности" на 12+ итерациях.

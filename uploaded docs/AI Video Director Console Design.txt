@@ -1,0 +1,171 @@
+﻿SVI 2.0 PRO: THE HUMAN-CENTRIC COGNITIVE PIPELINE AND DIRECTOR BIBLE
+1. Executive Summary: The Paradigm Shift in Generative Video Architecture
+The transition from static image generation to temporal video synthesis represents a fundamental discontinuity in artificial intelligence interaction design. While image generation relies on singular, detached prompts, professional long-form video production demands a system capable of managing continuity, causality, and complex state transitions over time. The development of SVI 2.0 Pro addresses this specific challenge by implementing a "Human-Centric Cognitive Pipeline" that mediates between the abstract creative intent of a human director and the rigid, high-dimensional requirements of the Wan 2.2 video generation model.
+Current generative video workflows suffer from a critical "translation gap." Users possess narrative intent—often described in emotive or atmospheric terms—but lack the technical vocabulary required to steer diffusion models effectively. Furthermore, the cognitive load of maintaining narrative coherence across multiple generated clips (the "temporal consistency problem") exceeds the capacity of standard chat interfaces. SVI 2.0 Pro solves this by introducing an intermediary intelligence: the AI Director. This agent, powered by a high-reasoning Large Language Model (LLM), does not merely pass prompts to the video engine; it structures, constrains, and translates user intent into a technically valid Directed Acyclic Graph (DAG) of narrative events.
+This report serves as the comprehensive "Director Bible" and Technical Specification for the platform. It leverages deep analysis of the Wan 2.2 Mixture-of-Experts (MoE) architecture 1, the semantic precision of the UMT5-XXL text encoder 3, and the reasoning capabilities of frontier models like Gemini 3 Flash and Grok 4.1. The analysis is bifurcated into two primary domains: the Cognitive Prompt Engineering required to define the Director's "brain," and the Technical Implementation Architecture required to build the React-based state machine that supports this non-linear, branching storytelling workflow.
+The operational pipeline transforms vague user inputs into precise, state-aware instructions. At the highest level, the user interacts with the system through a chat interface that dynamically shifts between open-ended exploration and constrained refinement. The Cognitive Engine, acting as the middleware, manages a persistent "Project Bible" and translates natural language into T5-compliant prompts that strictly adhere to the "State + Motion" syntax required by Wan 2.2. These prompts are then fed into the Generation Engine, where Wan 2.2's dual-expert architecture processes them—first through a High Noise Expert for structural composition, and subsequently through a Low Noise Expert for detailed texture refinement—to produce the final video output.
+________________
+Part I: The Director Bible 2.0 (Cognitive Prompt Engineering)
+The efficacy of the SVI 2.0 platform is entirely dependent on the "Director"—the AI agent that governs the creative process. Unlike a passive chatbot, the Director must be opinionated, possessing a deep understanding of cinematic grammar, physics, and the specific latent space limitations of the underlying video model. This section defines the cognitive heuristics and prompt engineering strategies necessary to construct this persona.
+2. Directorial UX & Cognitive Load Management
+A primary friction point in professional AI video generation is the duality of "Blank Page Paralysis" and "Parameter Fatigue." Users often approach the tool with a vague atmospheric concept but are quickly overwhelmed by the necessity of defining camera angles, lighting conditions, and motion vectors. The SVI 2.0 interface addresses this by functioning as a "Predictive Director," a system that actively manages cognitive load by dynamically shifting input modalities based on the user's current creative state.
+2.1 The "Switch Point": Balancing Exploration and Refinement
+Research into generative user interface (GenAI UX) patterns indicates that creative workflows oscillate between two distinct cognitive modes: Exploration (Divergent thinking) and Refinement (Convergent thinking).5 A static interface that treats every interaction as a text prompt fails to accommodate the "Refinement" phase, where the user's goal is to select the best path forward rather than invent a new one. To optimize for this, the SVI 2.0 Pro interface implements a logic gate defined as the "Switch Point."
+The Prompt Mode, designed for Exploration, is active when the project state is initialized or when the user explicitly triggers a "New Scene" event. In this state, the cognitive load of selecting from a pre-defined list is paradoxically high because the narrative possibilities are infinite. The interface therefore prioritizes the open text input field, encouraging the user to establish the foundational "Anchor State" of the scene using natural language.
+Conversely, the Button Mode, designed for Refinement and Continuation, activates immediately after a video node has successfully rendered. At this stage, the cognitive task shifts from invention to continuity. The user requires assistance in determining valid trajectories for the story that maintain temporal coherence with the just-generated clip. Here, the interface suppresses the text field in favor of 3-4 distinct `` buttons. These options act as "Predictive Directing" aids, effectively reducing the user's cognitive burden by presenting feasible narrative branches (e.g., "Zoom in on the artifact," "Pan left to reveal the exit") rather than demanding a new text description from scratch.
+This "Switch Point" logic is governed by the state of the selectedParentId and the render status of the current node. The system must analyze the metadata of the completed clip—specifically its ending frame description—to generate these predictive options. This transition is not merely a UI change but a shift in the AI agent's behavior, moving from a passive listener to an active proposer of cinematic strategy.
+
+
+  
+
+
+
+2.2 Predictive Directing Logic and the Project Bible
+To facilitate "Predictive Directing" that feels contextually aware rather than random, the system maintains a persistent state object known as the "Project Bible".3 This data structure holds critical narrative invariants: character portraits (physical descriptions), established locations, and the overarching genre tone. The Director AI queries this Bible before generating any options, ensuring that suggested actions are consistent with the established reality of the story.
+The heuristic priority queue for generating predictive options is strictly defined to ensure professional cinematic pacing:
+1. Continuity Priority: The Director analyzes the meta-tags of the previous shot. If the previous shot was a "Wide Shot" or "Establishing Shot," the algorithm prioritizes "Medium Shot" or "Close Up" options for the subsequent node. This enforces standard cinematic editing grammar, specifically the convention of breaking scenes down from the general to the specific, and adheres to the 30-degree rule to avoid jump cuts.7
+2. Action Completion Logic: The Director scans the prompt history for incomplete transitive verbs. If the previous prompt ended with an initiation of action (e.g., "The man reaches for the gun"), the highest-priority option must inevitably be the completion of that action ("He draws the weapon"). This logic prevents "narrative hanging," where a setup lacks a payoff in the visual sequence.
+3. Visual Variety Injection: To prevent visual stagnation, the system tracks the camera movement history. If the last three nodes utilized static camera positions, the Director is programmed to force a "Camera Movement" option (e.g., "Orbit," "Truck Left") into the selection pool.3 This ensures the generated video sequence maintains a dynamic visual rhythm typical of high-production-value cinema.
+3. Smart Option Generation Heuristics and Latent Space Coverage
+The generation of `` buttons is the primary mechanism of the Director's agency. However, random or generic options degrade the user experience. To be effective, the options must ensure "Latent Space Coverage," presenting a set of choices that represent distinct, non-overlapping vectors of narrative possibility. We define a "Divergence Pattern" for the Gemini 3 Flash model that categorizes options into three specific domains: Narrative, Visual, and Technical.
+3.1 Divergence Patterns for Option Generation
+The Director is instructed to generate 3-4 options that must ideally fall into separate categories to maximize the user's creative control:
+* Option A: Narrative Advance (Linear Progression): This option moves the plot forward in the most logical, linear fashion. It represents the "default" continuation of the story.
+   * Example Label: "Confrontation"
+   * Prompt Logic: "The hero steps forward and explicitly challenges the villain."
+* Option B: Visual/Atmospheric Shift (Tonal Lateral Move): This option changes the mood, lighting, or focus of the scene without significantly advancing the plot time. It allows the user to dwell on the atmosphere or emotional resonance of the moment.
+   * Example Label: "Ominous Atmosphere"
+   * Prompt Logic: "The camera pans up to the storm clouds gathering above, lighting shifts to a cool blue palette, emphasizing the impending danger."
+* Option C: Technical/Cinematic Shift (Structural Variation): This option focuses purely on camera work or styling, offering a different way to view the same event. It is crucial for fixing pacing or adding production value.
+   * Example Label: "Dynamic Orbit"
+   * Prompt Logic: "A fast orbit shot around the character to emphasize their isolation in the environment." 3
+By enforcing this categorization, the system ensures that the user is not presented with three slight variations of "he walks forward," but rather a meaningful choice between advancing the story, deepening the mood, or enhancing the visual style.
+3.2 The `` Syntax Contract and Parsing
+To ensure robust interoperability between the LLM and the React frontend, the AI Director must adhere to a strict output syntax. Research into LLM integration confirms that regex-based parsing of structured text anchors is highly reliable.3 The definition of this syntax is a critical part of the system prompt.
+Syntax Definition: ``
+* Label: A concise (2-4 words) string used for the button text in the UI. It must be action-oriented.
+* Description: A contextual string (10-15 words) displayed on hover or as subtext. This explains the implication of the choice to the user.
+* Prompt Addon: The exact, T5-optimized text segment that will be appended to the "Anchor State" to generate the next clip. This segment must strictly follow the "State + Motion" rule defined in the prompt engineering guidelines.
+4. Human-to-Technical Translation: The Style Mapping Dictionary
+The Wan 2.2 video generation model relies on the UMT5-XXL (T5) text encoder.2 This choice of encoder necessitates a fundamental shift in prompting strategy compared to older diffusion models. Unlike CLIP-based models (such as Stable Diffusion XL) that respond well to "tag soup" (lists of keywords like "4k, trending on artstation, masterpiece"), T5 is a large language model trained on the C4 dataset, optimized for natural language understanding. Consequently, "tag soup" often confuses the T5 encoder, leading to poor prompt adherence and artifacts.10 The Director's role is to act as a translator, converting the user's abstract "vibes" into T5-compliant natural language sentences.
+4.1 The "State + Motion" Rule (FMLF Workflow)
+The most critical technical constraint for Wan 2.2 is maintaining temporal continuity. The model generates short clips (typically 5 seconds). To ensure that Clip B visually follows Clip A, the prompt for Clip B must explicitly describe the visual state at the end of Clip A. We codify this as the FMLF (First-Middle-Last Frame) workflow.3
+The Translation Formula:
+Prompt(N) = State(End of N-1) + Motion(Delta of N)
+* State (The Anchor): This part of the prompt stabilizes the generation. It reiterates the subject, their clothing, the lighting, and the background as they appeared in the last frame of the previous video. Without this, the model may hallucinate new clothing or a different environment.
+* Motion (The Delta): This part describes only the change that occurs in the new clip.
+* Example Translation:
+   * User Input: "Make him turn around."
+   * Technical Translation: "The man stands in the dimly lit alleyway, rain glistening on his leather jacket (State). He sharply pivots his body 180 degrees to face the camera, his expression shifting from calm to alarmed (Motion)."
+4.2 Camera Vocabulary Mapping
+Users typically lack the technical vocabulary of a cinematographer. They use subjective terms like "epic," "scary," or "fast." The Style Mapping Dictionary is a heuristic lookup table used by the Director to translate these subjective concepts into the precise camera movement vocabulary recognized by Wan 2.2.3
+
+
+  
+
+
+
+This mapping ensures that when a user requests an "Epic" shot, the system does not just add the word "epic" to the prompt (which T5 might interpret vaguely). Instead, it translates the request into "A wide, establishing shot capturing the vast scale of the relative to the environment," and triggers specific camera movements like Boom Up, Pull Back, or Drone Flyover. Similarly, "Intense" translates to tight close-ups with Dolly In movements and high-contrast lighting descriptions.
+5. Model Competition: Grok 4.1 Fast vs. Gemini 3 Flash
+The selection of the LLM powering the Director agent is a strategic decision that impacts the entire pipeline. We evaluated Grok 4.1 Fast and Gemini 3 Flash across three critical dimensions: Creative Empathy, Spatial Reasoning, and Technical Adherence.
+5.1 Creative Empathy and Narrative Tone
+Grok 4.1 Fast is characterized by a "witty," "rebellious," and "truth-oriented" persona.11 Benchmarks and user feedback suggest it excels in creative writing tasks, producing prose that is energetic, engaging, and less robotic than many competitors.12 For a Director persona intended to inspire the user and suggest novel plot twists, Grok's tonal flexibility is a significant asset. It avoids the "clinical" feel often associated with corporate LLMs.
+Gemini 3 Flash, while highly capable, is optimized for speed and utility. Its creative output is polished but can be perceived as "cold" or overly formal compared to Grok.12 In a creative brainstorming context, this lack of "spark" can be a disadvantage.
+Winner (Narrative): Grok 4.1 Fast.
+5.2 Spatial Reasoning and Visual Logic
+Video direction is fundamentally a spatial task. The Director must understand physical continuity: if a character exits a room to the left, they must enter the next room from the right. This requires a strong grasp of spatial relationships and object permanence.
+Gemini 3 Flash demonstrates "frontier-class" performance on visual and spatial reasoning benchmarks, scoring 90.4% on GPQA Diamond.13 It is natively multimodal, capable of processing video and image inputs directly, which allows it to "see" the generated clips and maintain consistency over long contexts.15
+Grok 4.1 Fast, while improving, shows limitations in complex multi-modal analysis and spatial tasks compared to the Gemini architecture.16 It is primarily text-and-code optimized.
+Winner (Spatial): Gemini 3 Flash. The risk of "video hallucinations"—where characters teleport or physics breaks down—is significantly lower with Gemini's superior spatial logic.
+5.3 Technical Adherence and Cost Efficiency
+The Director must rigorously adhere to the `` regex syntax and manage the JSON state of the Project Bible.
+Gemini 3 Flash is highly reliable for structured outputs and "agentic" workflows.9 It boasts a massive context window (1M+ tokens), allowing it to hold the entire history of a project, including complex character sheets and previous scene descriptions, without forgetting.17 Its pricing is also extremely competitive at $0.50/1M input tokens.
+Grok 4.1 Fast is exceptionally fast (455 tokens/s) and cheaper ($0.20/1M input), but it has historically higher hallucination rates and may struggle with strict schema enforcement compared to Google's models.9
+Winner (Technical): Gemini 3 Flash. The massive context window is the deciding factor for long-form storytelling.
+5.4 Strategic Recommendation
+Gemini 3 Flash is the recommended model for the SVI 2.0 Pro Director. While Grok 4.1 offers superior creative flair, the Director's primary function is technical consistency—managing the state of the story, ensuring prompt adherence, and maintaining spatial logic over time. The slight trade-off in narrative "wit" is acceptable to gain the reliability and spatial reasoning capabilities of Gemini, which are essential for avoiding continuity errors in video production.
+Benchmark data indicates that Gemini 3 Flash leads in Spatial Reasoning and Technical Adherence, which are crucial for video continuity. While Grok 4.1 Fast excels in raw Speed and Creative Tone, the requirements for a consistent "Director" agent prioritize the stability and logic offered by Gemini.
+________________
+Part II: Technical Implementation Architecture
+Directing AI video is a non-linear, branching process. The technical architecture must support this "multiverse" of storytelling while managing the asynchronous nature of video rendering, which operates on a timescale of minutes rather than milliseconds.
+6. Interactive Pipeline Implementation: The DAG Architecture
+We define three architectural archetypes for the SVI 2.0 pipeline. The "Phase 6 Pro Pipeline" utilizes Archetype A (Narrative Branching/DAG) as its core structure, supported by elements of visual refinement and iterative correction.
+6.1 Archetype A: Narrative Branching (DAG)
+The core data structure of SVI 2.0 is a Directed Acyclic Graph (DAG). Unlike a linear chat, a DAG allows for infinite branching. The root node represents the start of the scene. Every decision the user makes (selecting an option or entering a prompt) creates a new child node.
+* Implementation: The frontend utilizes a state management library capable of handling complex tree structures. React Flow or a custom D3.js visualizer is recommended to render this tree visually for the user.18
+* User Value: This allows the user to "time travel." If they follow a narrative branch that reaches a dead end, they can click on a parent node three steps back and branch in a different direction without losing their previous work. This maps perfectly to the "Smart Option Generation" heuristic defined in Part I.
+6.2 Archetype B: Visual Refinement (Style Layers)
+This archetype addresses the need for "In-painting" or "Style Transfer" without changing the narrative content. It treats the video generation as a stack of layers.
+* Mechanism: This is implemented using Wan 2.2's denoise_strength parameter. By controlling the switch point between the High Noise and Low Noise experts, the system can preserve the composition of a clip while altering its texture or lighting.20
+* Workflow: SVI 2.0 uses this for the "Regenerate" function. If a node is semantically correct but visually flawed, the user stays on the same node ID but requests a "re-roll" with a different seed, effectively creating a "stack" of versions within a single DAG node.
+6.3 Archetype C: Iterative Correction (Human-in-the-Loop)
+Fully automated feedback loops are currently too slow and costly for real-time video generation. SVI 2.0 implements a Human-in-the-Loop correction model.
+* Process: The user identifies an error (e.g., "The car is the wrong color"). They click "Fix," providing a text correction. The Director agent then generates a new prompt_addon that specifically addresses this error while maintaining the rest of the anchor state, creating a sibling node in the DAG.
+The SVI 2.0 state management architecture uses this DAG structure where each node contains the video asset, prompt state, and parent reference. This allows for infinite branching and 'time travel' within the narrative, providing a robust framework for managing complex story flows.
+7. State & Callback Logic: Managing Asynchrony
+Professional video generation is an asynchronous, long-running process. A typical 5-second clip at 720p on Wan 2.2 can take 60-120 seconds to render. The application cannot block the UI during this time. We implement a robust Optimistic UI and Polling architecture to manage this latency.
+7.1 "Button Metadata" and UUIDs
+The frontend must handle "Button Metadata" securely to prevent state mismatches. When an `` is parsed from the LLM response, the system generates a temporary id for tracking.3 However, the definitive state tracking relies on the nodeId.
+* Action: The user clicks an option button.
+* State Change: The system immediately creates a new StoryNode in the local store (IndexedDB via Dexie.js) with a status of pending and a locally generated UUID.
+* Optimistic UI: The chat interface immediately displays a "Rendering..." placeholder for this new node. The user perceives the system response as instant, maintaining flow, even though the heavy compute task has just begun on the backend.22
+7.2 Robust Multi-Turn Parsing and Context Management
+As the story grows, the chat history expands indefinitely. Sending the full history to Gemini 3 Flash for every request would rapidly consume the context window and increase latency/cost.
+* Strategy: We implement a "Sliding Context Window with Pinned Invariants."
+* Mechanism: The PROJECT_BIBLE (Character portraits, Genre, Visual Style) is pinned and always injected as a system instruction at the start of the context.3 The rest of the conversation history is truncated to the last $N$ turns (e.g., the last 10 messages) to provide immediate narrative context. This ensures that the Director applies the "State + Motion" rule to the current situation, without being distracted by irrelevant details from five scenes ago.
+7.3 Background Polling Implementation
+To monitor the progress of video generation without websockets (which can be fragile in mobile/browser environments), the ChatInterface utilizes a robust polling hook (useInterval or useEffect with setInterval).3
+* State Machine Definition: The polling logic tracks the activeTasks dictionary and updates the renderStage of each node through specific phases:
+   1. QUEUED: Task submitted to the API.
+   2. LOADING: Model is loading into VRAM (High Noise Expert).
+   3. SAMPLING: The denoising loop is active (High -> Low Noise transition).
+   4. UPLOADING: The final video file is being encoded and transferred.
+   5. DONE: The asset is available in the OPFS (Origin Private File System).
+* Optimization: The polling frequency is dynamic. It polls rapidly (e.g., every 1s) during the SAMPLING phase to provide smooth progress bar updates, but slows down (e.g., every 5s) during the QUEUED phase to reduce API load.
+
+
+  
+
+
+
+8. Frontend-Backend Sync: API Contract
+The communication between the React frontend and the rendering backend relies on a strict API contract to handle the dynamic "Button Modes" defined in Part I. The backend must be agnostic to the UI state; it simply receives a render request.3
+8.1 The renderNode Contract
+The API renderNode endpoint is the workhorse of the system. It must accept not just the prompt, but the structural context of the render to ensure the DAG is correctly constructed on the server side (if server-side state is maintained) or simply to log the lineage.
+Payload Specification:
+The payload includes projectId for scoping, parentId for continuity (the source of the "State"), the prompt containing the "Motion" delta, the mode ('T2V' or 'I2V'), the tier (Quality vs Speed), and an optional anchorPngUrl which is crucial for Image-to-Video continuity (representing the last frame of the parent node).
+Response Specification:
+The response provides a taskId for polling and a nodeId which confirms the optimistic node creation.
+8.2 Decoupling Logic: Handling "Button Modes"
+Crucially, the backend does not know about the "buttons" generated by the LLM. The "Translation Layer" defined in Part I (converting user intent to technical prompts) happens entirely on the client/LLM side before the API is called.
+* User Action: The user clicks "Option A: Confrontation."
+* Client Logic: The frontend retrieves the hidden prompt_addon associated with Option A (e.g., "Camera pushes in on hero as he draws weapon...").
+* Construction: The frontend combines the ParentNode.lastFrameDescription (State) with the prompt_addon (Motion).
+* API Call: The frontend sends the fully constructed, T5-optimized prompt to the backend.
+This decoupling ensures that the UI remains flexible and human-centric, while the API remains purely technical and stateless, adhering to the core philosophy of SVI 2.0.
+9. Conclusion
+SVI 2.0 Pro represents a significant maturation of AI video generation technology. By moving beyond simple text prompting and embracing a "Director-in-the-Loop" architecture, the platform solves the two most persistent hurdles in the industry: Cognitive Load and Temporal Continuity.
+The combination of Gemini 3 Flash for its superior spatial reasoning and massive context window, coupled with the Wan 2.2 MoE model's robust motion capabilities, creates a pipeline where users can tell coherent, multi-shot stories rather than generating isolated, random clips. The technical backbone—a React-based DAG with optimistic state management—ensures that this complex logic feels instantaneous and fluid to the user. SVI 2.0 Pro is not merely a tool for generating video; it is a collaborative engine for the next generation of digital storytelling, bridging the gap between human imagination and machine execution.
+Источники
+1. Wan-Video/Wan2.2: Wan: Open and Advanced Large-Scale Video Generative Models - GitHub, дата последнего обращения: января 7, 2026, https://github.com/Wan-Video/Wan2.2
+2. Alibaba's Wan 2.2 Video Models Adopt a New Architecture To Sort Noisy From Less-Noisy Inputs - DeepLearning.AI, дата последнего обращения: января 7, 2026, https://www.deeplearning.ai/the-batch/alibabas-wan-2-2-video-models-adopt-a-new-architecture-to-sort-noisy-from-less-noisy-inputs/
+3. ChatInterface (1).tsx
+4. Prompting Base Model Basics - Draw Things WIKI, дата последнего обращения: января 7, 2026, https://wiki.drawthings.ai/wiki/Prompting_Base_Model_Basics
+5. 7 Key Design Patterns for AI Interfaces | by Fanny | UX Planet, дата последнего обращения: января 7, 2026, https://uxplanet.org/7-key-design-patterns-for-ai-interfaces-893ab96988f6
+6. 20+ GenAI UX patterns, examples and implementation tactics | by Sharang Sharma, дата последнего обращения: января 7, 2026, https://uxdesign.cc/20-genai-ux-patterns-examples-and-implementation-tactics-5b1868b7d4a1
+7. Digital Video Editing: The Grammar of Editing - Videomaker, дата последнего обращения: января 7, 2026, https://www.videomaker.com/article/3398-digital-video-editing-the-grammar-of-editing/
+8. Sequence shots in film and how to use them - Adobe, дата последнего обращения: января 7, 2026, https://www.adobe.com/creativecloud/video/production/cinematography/camera-shots-and-angles/sequence-shot.html
+9. Gemini 3 Flash vs Grok-4.1 Fast Reasoning - LLM Stats, дата последнего обращения: января 7, 2026, https://llm-stats.com/models/compare/gemini-3-flash-preview-vs-grok-4-1-fast-reasoning
+10. How to get the most out of prompts for WAN Models - Hugging Face Forums, дата последнего обращения: января 7, 2026, https://discuss.huggingface.co/t/how-to-get-the-most-out-of-prompts-for-wan-models/170354
+11. Grok vs. Gemini: A Comprehensive Comparison of Leading AI Chatbots in 2025 - LogicWeb, дата последнего обращения: января 7, 2026, https://www.logicweb.com/grok-vs-gemini-a-comprehensive-comparison-of-leading-ai-chatbots-in-2025/
+12. Unpopular Opinion: Grok 4.1 Has Better EQ Than Gemini 3. But Both Pale Next to Original 4o. - Reddit, дата последнего обращения: января 7, 2026, https://www.reddit.com/r/ChatGPTcomplaints/comments/1p11xi2/unpopular_opinion_grok_41_has_better_eq_than/
+13. Gemini 3 Flash vs GPT-5.2 vs Claude Opus 4.5 vs Grok 4.1, The Real Winner Surprised Me | by Cogni Down Under - Medium, дата последнего обращения: января 7, 2026, https://medium.com/@cognidownunder/gemini-3-flash-vs-gpt-5-2-vs-claude-opus-4-5-vs-grok-4-1-the-real-winner-surprised-me-b43d0688452e
+14. Build with Gemini 3 Flash: frontier intelligence that scales with you - Google Blog, дата последнего обращения: января 7, 2026, https://blog.google/technology/developers/build-with-gemini-3-flash/
+15. A new era of intelligence with Gemini 3 - Google Blog, дата последнего обращения: января 7, 2026, https://blog.google/products/gemini/gemini-3/
+16. Grok 4.1 vs Gemini 3.0 : 2025 Frontier AI Showdown - Skywork.ai, дата последнего обращения: января 7, 2026, https://skywork.ai/blog/ai-agent/grok-41-vs-gemini-30-comparison/
+17. Gemini 3 Flash Preview vs Grok 4.1 Fast - AI Model Comparison - OpenRouter, дата последнего обращения: января 7, 2026, https://openrouter.ai/compare/google/gemini-3-flash-preview/x-ai/grok-4.1-fast
+18. Branching chat starter kit • tldraw Docs, дата последнего обращения: января 7, 2026, https://tldraw.dev/starter-kits/branching-chat
+19. brimdata/react-arborist: The complete tree view component for React - GitHub, дата последнего обращения: января 7, 2026, https://github.com/brimdata/react-arborist
+20. Wan i2v: how do I lower the image "strength"? : r/StableDiffusion - Reddit, дата последнего обращения: января 7, 2026, https://www.reddit.com/r/StableDiffusion/comments/1mpn3rs/wan_i2v_how_do_i_lower_the_image_strength/
+21. Fix Wan slowmotion. Image2video Wan 2.2 14b for ComfyUI - YouTube, дата последнего обращения: января 7, 2026, https://www.youtube.com/watch?v=jH2pigu_suU
+22. How to Use the Optimistic UI Pattern with the useOptimistic() Hook in React - freeCodeCamp, дата последнего обращения: января 7, 2026, https://www.freecodecamp.org/news/how-to-use-the-optimistic-ui-pattern-with-the-useoptimistic-hook-in-react/

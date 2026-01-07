@@ -1,0 +1,47 @@
+# DEEP RESEARCH TASK: SVI 2.0 PRO HUMAN-CENTRIC COGNITIVE PIPELINE
+
+## CONTEXT
+We are building "SVI 2.0 Pro", a professional long-form AI video platform. 
+- Core: Wan 2.2 (14B MoE) using T5-XXL text encoder.
+- Problem: The interaction needs to evolve from simple "Chat" to a "Professional Directing Console". We need to implement complex "Button Modes" that shield the user from technical complexity while maintaining precise control.
+
+## OBJECTIVE 1: COGNITIVE PROMPT ENGINEERING (60%)
+Analyze the provided code and guidelines to design the ultimate "Director-User" interaction logic.
+
+1. DIRECTORIAL UX & COGNITIVE LOAD:
+   - Identify the "Switch Point": When is a button click superior to a text prompt?
+   - Design "Predictive Directing" logic: LLM must anticipate 3 logical next steps (e.g., "Action Intensifies", "Camera Orbit", "Environment Shift").
+
+2. SMART OPTION GENERATION HEURISTICS:
+   - Define patterns for the LLM to generate `[OPTION: Label | Description | Prompt Addon]`.
+   - Ensure "Latent Space Coverage": One option should be Narrative (Story), one Visual (Style), and one Technical (Camera).
+
+3. HUMAN-TO-TECHNICAL TRANSLATION:
+   - Develop a "Style Mapping Dictionary": Translating vague user input ("Make it more epic") into T5-optimized natural language ("cinematic wide shot, anamorphic lens, volumetric lighting, particles in air").
+   - Synthesize linguistic patterns for T5-XXL that maximize Wan 2.2 adherence without human effort.
+
+4. MODEL COMPETITION:
+   - Compare **Grok 4.1 Fast** vs **Gemini 3 Flash**. Which model exhibits better "Creative Empathy" and spatial reasoning for video consistency?
+
+## OBJECTIVE 2: TECHNICAL IMPLEMENTATION ARCHITECTURE (40%)
+Research and propose how to implement these interactive workflows in a production-ready codebase.
+
+1. INTERACTIVE PIPELINE IMPLEMENTATION:
+   Research best industry practices for:
+   - **Archetype A (Narrative Branching):** State management for DAG nodes in a multi-turn chat.
+   - **Archetype B (Visual Refinement):** Implementing "Style Layers" where buttons inject prompt segments without re-writing the whole intent.
+   - **Archetype C (Iterative Correction):** Feedback loops (e.g., "Too much motion") and how to map them to specific technical parameters (denoise strength, cfg scale, motion bucket).
+
+2. STATE & CALLBACK LOGIC:
+   - How to handle "Button Metadata" in the backend. Should buttons carry hidden UUIDs or full prompt segments?
+   - Design a robust multi-turn parsing pattern that prevents special character crashes in long chat histories.
+
+3. FRONTEND-BACKEND SYNC:
+   - Propose an API contract for "Button Modes" that allows the UI to change dynamically based on the LLM's suggested options.
+
+## OUTPUT REQUIREMENT
+Deliver a report structured as follows:
+- (60%) **The Director Bible 2.0**: Updated System Instructions, Option Generation Rules, and the "Human-to-Technical" translation matrix.
+- (40%) **Technical Implementation Spec**: 4 implementation archetypes for "Button Modes", Regex/Parsing patterns, and a State Management blueprint for interactive video generation.
+
+*Crucial: Ensure the technical side explains HOW to integrate the LLM suggestions into a React/FastAPI workflow without losing causality.*

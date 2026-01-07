@@ -1,22 +1,37 @@
+# LATEX VISION: Hybrid Kernel Architecture (v2.6)
 
-# Technical Architecture: SVI 2.0 Pro v2.5
+System Architecture for the **Latex Vision** platform (built on SVI 2.0 Pro framework).
 
-1. Interface Layer
-- Web: React 19 (High-End Studio).
-- Bot: Telegram API (Simplified/Mobile Companion).
+## 1. Control Plane (The Studio Console)
+- **Interface:** React 19 SPA (Professional Onyx/Zinc Theme).
+- **Synthetic Director (Cognitive Layer):** Gemini 3 Flash. 
+  - Role: Interviews the producer, maintains the "Project Bible", and translates intent into "State + Motion" directives.
+  - Logic: Implements the "Switch Point" between manual molding and trajectory selection.
+- **State Management:** Dexie.js (IndexedDB). Stores the "Reality Graph" (DAG of video nodes) locally.
 
-2. Cognitive & Orchestration Layer
-- Intelligence: Gemini 3 Flash (Director Mode).
-- API Gateway: FastAPI (Task Dispatcher).
-- Queue Management: Redis + Celery (Priority-based).
+## 2. Compute Plane (Latex Cloud)
+- **Infrastructure:** RunPod Serverless (NVIDIA RTX 4090 / L40S Clusters).
+- **Engine:** "Latex Core" (Custom ComfyUI container).
+- **Model Architecture:** 
+  - Base: Wan 2.2 14B MoE (Mixture of Experts).
+  - Continuity: SVI FMLF (First-Middle-Last Frame) protocol.
+  - Latency Mitigation: "Warm" container triggers for Plus/Pro tiers.
 
-3. Generation Layer (GPU Cloud)
-- Engine: ComfyUI (Headless API Mode).
-- Hardware: RunPod Serverless (RTX 4090 / L40S).
-- Model: Wan 2.2 14B MoE (FP8 Quantized).
-- Continuity: SVI FMLF conditioning (Anchor Frame injection).
+## 3. Storage & Persistence (The Archive)
+- **Metadata Storage:** IndexedDB for narrative structure and character invariants.
+- **Media Cache:** OPFS (Origin Private File System). Caches raw H.264 blobs locally to reduce cloud egress and provide zero-latency playback.
+- **Data Portability:** Professional JSON export for "Infrastructure Migration".
 
-4. Persistence & Storage
-- State: IndexedDB (Client) + Redis (Session).
-- Assets: S3-Compatible Storage (MinIO) for frames and videos.
-- Transcoding: FFmpeg Worker (H.264 optimization).
+## 4. Economy & Billing (The Ledger)
+- **Unit:** Compute Credits.
+- **Metering:** Per-second GPU intensity metrics.
+- **Tiering:**
+  - FREE: Shared queue, 480p baseline.
+  - PLUS: Priority queue, 720p access.
+  - PRO: Dedicated warm nodes, zero-latency cold starts.
+
+## 5. The Elastic Pipeline
+1. **Molding:** Producer defines intent.
+2. **Synthesis:** Director LLM generates T5-optimized prompt (Anchor State + Motion Delta).
+3. **Render:** Distributed request to Latex Cloud.
+4. **Caching:** Resulting blob streamed to OPFS and registered in the Reality Graph.

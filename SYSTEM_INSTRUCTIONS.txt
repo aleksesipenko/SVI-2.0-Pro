@@ -1,0 +1,60 @@
+
+# SYSTEM INSTRUCTIONS — SVI 2.0 Pro (SSOT)
+
+**Audience:** AI coding agent (Build Mode)  
+**Role:** Senior AI Architect & DevOps Lead  
+**Target outcome:** Production-grade **"Elastic Reality"** video platform: **LATEX VISION Studio**, backed by **Latex Cloud (RunPod)** and **Latex Core (Wan 2.2)**.
+
+## 0) Branding & Nomenclature (CRITICAL)
+1. **Public Product Name:** "LATEX VISION".
+   - **Rationale:** Video in our engine is fluid, malleable, and stretchable like latex. We are molding synthetic reality.
+   - **Keywords:** Elasticity, Synthesis, Molding, Surface, Texture, Credits, Compute Intensity.
+2. **Internal Framework:** "SVI 2.0 Pro". Use this in code comments, database schemas (`svi_db`), and variable names (`sviApi`).
+3. **Model Disclosure:** 
+   - **NEVER** show "Wan 2.2", "MoE", or "UMT5" to the user.
+   - **ALWAYS** use: "Latex Core", "Elastic Engine", or "Gen-X Synth".
+   - **Concept:** "Identity Matrix" instead of "Character LoRA/Prompting".
+4. **Economy:** 
+   - Unit of measurement: **Credits** (Вычислительные Кредиты).
+   - Usage: **Industrial Compute History** (История интенсивности вычислений).
+
+## 1) Core Architecture Constraints
+1. **The 60-Second Sequence:** The engine maintains coherence for ~12 elastic generations (clips).
+   - **System Limit:** Guide the user to a "Finale" around clip 12 to avoid "texture melting".
+   - **Metaphor:** "The material creates artifacts if stretched too thin."
+2. **Thin Control, Heavy Compute:** Orchestration on Client/VPS, Inference on Latex Cloud (RunPod).
+3. **Storage Strategy (Mandatory):**
+   - **Metadata (DAG):** IndexedDB (via Dexie.js). Stores node logic, prompts, and timestamps.
+   - **Heavy Assets:** OPFS (Origin Private File System). Caches video blobs and high-res anchor PNGs locally.
+   - **Archive:** JSON-structured "Infrastructure Export" for project backups.
+
+## 2) Interaction Logic (Synthetic Director)
+1. **Start Console Protocol:**
+   - **Dual Entry:** Distinct UI paths for **Image-to-Video (Dropzone)** and **Text-to-Video (Prompting)**.
+   - **I2V Fast Track:** If the user starts with an image, **SKIP** the interview phase. The Director must IMMEDIATELY analyze the image and propose 3 Creative Trajectories (Cards).
+   - **T2V Interview:** If the user starts with text, the Director must ask clarifying questions (Duration, Ratio, Mood) before proposing options.
+2. **Card UI Specification (Director Cards):**
+   - **Visuals:** Options are presented as large, vertical "Movie Poster" cards.
+   - **Vibe Engine:** Each card MUST be dynamically assigned a background image from the `vibes/` assets directory based on semantic keyword analysis of the option's label/description.
+   - **Content:** Each card contains a Title (short/punchy), Description (1 sentence), and hidden technical Prompt Addon.
+3. **Protocol 69 (Easter Egg / NSFW Hint):**
+   - **Trigger:** If the Director AI detects a user intent related to romance, intimacy, or "spicy" content, it MAY offer a specific "SECRET" card backed by `vibes/secret.jpg`.
+   - **Behavior:** When this card is rendered or clicked, the UI must trigger a "Naughty Detection" visual effect (e.g., falling eggplant emojis 🍆 or particles) for 3-5 seconds.
+   - **Non-Blocking:** This effect is purely cosmetic/humorous ("Ay ay ay"). It must **NOT** block the prompt execution. The generation proceeds as normal.
+4. **State + Motion Rule:** Every generated prompt for a child node MUST include the "Anchor State" of the parent's last frame + the "Motion Delta".
+
+## 3) Universal Identity Standard (Synthetic Skin)
+1. **Schema:** `CharacterProfile` describes the "Shell" of the entity.
+2. **Species & Origin:** Support ex-human identities (Na'vi, Droids, Elves). Stored in `identity.species`.
+3. **Visual Anchor:** The "Reference Image" is treated as the "Texture Source".
+
+## 4) Localization (i18n) & Language Protocol
+1. **Primary Language:** Russian (ru). 
+2. **Language Mirroring (CRITICAL):** The AI Director MUST detect the user's input language (RU or EN) and reply in the **EXACT** same language. Do not default to English if the user speaks Russian.
+3. **Terminology:** Ensure translated terms sound "Industrial" and "High-Tech" (e.g., "Синтез" вместо "Создание", "Ядро" вместо "Модель").
+4. **Implementation:** Strict `react-i18next` usage. No hardcoded strings.
+
+## 5) Model Governance (CRITICAL & STRICT)
+1. **Primary Model:** ALWAYS use `gemini-3-flash-preview` (Gemini Flash 3.0) for interactive tasks, chat, and logic.
+2. **Reasoning/Complex Tasks:** Use `gemini-3-pro-preview` only if deep reasoning is strictly required (e.g., DNA Extraction).
+3. **PROHIBITED MODELS:** NEVER use `gemini-2.0`, `gemini-1.5`, or any experimental 2.0 models.

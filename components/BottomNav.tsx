@@ -1,7 +1,7 @@
-
 import React from 'react';
-import { MessageSquare, User } from 'lucide-react';
+import { MessageSquare, User, LayoutGrid } from 'lucide-react';
 import { NavigationTab } from '../types';
+import { useTranslation } from 'react-i18next';
 
 interface BottomNavProps {
   activeTab: NavigationTab;
@@ -9,18 +9,19 @@ interface BottomNavProps {
 }
 
 const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
+  const { t } = useTranslation();
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-lg border-t border-zinc-800 px-6 py-2 md:hidden">
-      <div className="flex items-center justify-center gap-16 max-w-md mx-auto">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 dark:bg-[#171717]/90 backdrop-blur-xl border-t border-zinc-200 dark:border-white/5 px-6 py-2 md:hidden transition-colors">
+      <div className="flex items-center justify-between max-w-md mx-auto">
         <NavItem 
-          icon={<MessageSquare />} 
-          label="Productions" 
+          icon={<LayoutGrid />} 
+          label={t('productions')} 
           active={activeTab === NavigationTab.CHAT} 
           onClick={() => onTabChange(NavigationTab.CHAT)} 
         />
         <NavItem 
           icon={<User />} 
-          label="Profile" 
+          label={t('profile')} 
           active={activeTab === NavigationTab.PROFILE} 
           onClick={() => onTabChange(NavigationTab.PROFILE)} 
         />
@@ -37,10 +38,10 @@ const NavItem: React.FC<{
 }> = ({ icon, label, active, onClick }) => (
   <button 
     onClick={onClick}
-    className={`flex flex-col items-center gap-1 transition-colors ${active ? 'text-purple-500' : 'text-zinc-500'}`}
+    className={`flex flex-col items-center gap-1 transition-all ${active ? 'text-zinc-900 dark:text-white scale-105' : 'text-zinc-400'}`}
   >
-    {React.cloneElement(icon as React.ReactElement<{ className?: string }>, { className: 'w-6 h-6' })}
-    <span className="text-[10px] font-medium uppercase tracking-widest">{label}</span>
+    {React.cloneElement(icon as React.ReactElement<{ className?: string }>, { className: 'w-5 h-5' })}
+    <span className="text-[9px] font-bold uppercase tracking-widest">{label}</span>
   </button>
 );
 

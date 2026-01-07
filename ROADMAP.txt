@@ -1,21 +1,31 @@
 
-# Project Roadmap: SVI 2.0 Pro
+# Roadmap: LATEX VISION
 
-Phase 1-3: UI/UX & Hub (COMPLETE)
-Phase 4: Character Ledger & Global Identity (COMPLETE)
+Phase 1-4: Foundation (DONE)
+- [x] Vision Terminal UI (Onyx Theme)
+- [x] Identity Matrix (Cast Manager)
+- [x] Visual Hub (Sequence Dashboard)
+- [x] Localization Engine (RU/EN, Industrial Tone)
+- [x] Rebranding: Latex Vision / Elastic Reality Narrative
 
-Phase 5: Interactive Direction (IN PROGRESS)
-- [ ] Director Option Cards (A/B/C) for story branching.
-- [ ] Dynamic scenario suggestions.
+Phase 5: Hybrid Narrative Engine (DONE)
+- [x] Reality Graph Core (Dexie DB).
+- [x] Dual-View System (Log + Canvas).
+- [x] Professional Settings & Media Cache Management.
+- [x] Project Data Portability (JSON Archive).
+- [x] Start Console (I2V Dropzone & T2V Input).
+- [x] Director Cards UI (Movie Poster Style).
 
-Phase 6: Professional Pipeline & DevOps (TODO)
-- [ ] IndexedDB for robust project persistence.
-- [ ] RunPod Serverless API Bridge (JSON Graph generation).
-- [ ] Dockerized ComfyUI with Network Volume mounting.
-- [ ] Multi-platform Frame Buffer (S3) for I2V continuity.
+Phase 6: Latex Cloud Integration & Vibe Engine (CURRENT)
+- [x] Define Vibe Categories & Prompts (vibes/PROMPTS.md).
+- [ ] Implement Thinking Indicator (Pulsing Dot) for AI latency masking.
+- [ ] Vibe Engine: Map card semantics to background images (arcane, urban, tech, etc.).
+- [ ] Connect RunPod Serverless API Bridge.
+- [ ] Implement FMLF (First-Middle-Last Frame) continuity loop.
+- [ ] Anchor Frame extraction logic (Canvas-based PNG extraction).
+- [ ] Real-time Render Progress via Polling Hooks.
 
-Phase 7: SVI Companion (Telegram Integration) (NEW)
-- [ ] "SVI Lite" workflow for Telegram Bot.
-- [ ] Async status updates (Webhook bridge).
-- [ ] Cross-platform session sync (Web <-> TG).
-- [ ] Automated FFmpeg transcoding (H.264/yuv420p).
+Phase 7: Industrial Polish (TODO)
+- [ ] Batch Upscaling (480p -> 720p Pro).
+- [ ] Advanced Camera Keyframing via UI.
+- [ ] Multi-character scene management in the Identity Matrix.
