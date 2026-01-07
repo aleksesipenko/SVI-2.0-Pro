@@ -1,0 +1,21 @@
+
+# Project Roadmap: SVI 2.0 Pro
+
+Phase 1-3: UI/UX & Hub (COMPLETE)
+Phase 4: Character Ledger & Global Identity (COMPLETE)
+
+Phase 5: Interactive Direction (IN PROGRESS)
+- [ ] Director Option Cards (A/B/C) for story branching.
+- [ ] Dynamic scenario suggestions.
+
+Phase 6: Professional Pipeline & DevOps (TODO)
+- [ ] IndexedDB for robust project persistence.
+- [ ] RunPod Serverless API Bridge (JSON Graph generation).
+- [ ] Dockerized ComfyUI with Network Volume mounting.
+- [ ] Multi-platform Frame Buffer (S3) for I2V continuity.
+
+Phase 7: SVI Companion (Telegram Integration) (NEW)
+- [ ] "SVI Lite" workflow for Telegram Bot.
+- [ ] Async status updates (Webhook bridge).
+- [ ] Cross-platform session sync (Web <-> TG).
+- [ ] Automated FFmpeg transcoding (H.264/yuv420p).

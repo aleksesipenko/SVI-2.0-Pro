@@ -1,0 +1,22 @@
+
+# SVI 2.0 Pro - Implementation Plan
+
+Step 1-5: UI, Characters & Direction (DONE)
+
+Step 6: GPU Cloud & API Bridge (CURRENT)
+- Build a FastAPI middleware to handle RunPod Serverless calls.
+- Implement "Warm Start" logic to reduce generation wait time.
+- Create a shared S3 bucket for "Anchor Frames" between Web and Cloud.
+
+Step 7: Professional Pipeline
+- Integrate IndexedDB for storing multi-GB productions in-browser.
+- Implement "Master Video" stitching logic (Server-side FFmpeg).
+
+Step 8: Telegram Companion Bot
+- Develop a Python-based bot using `python-telegram-bot` (async).
+- Connect the bot to the same API Bridge as the web app.
+- Map "Director Options" to Telegram Inline Buttons.
+
+Step 9: DevOps Hardening
+- Setup CI/CD for Docker images (RunPod Workers).
+- Optimize Network Volumes to cache Wan 2.2 (14B) weights.

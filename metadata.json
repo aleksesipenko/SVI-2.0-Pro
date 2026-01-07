@@ -1,0 +1,8 @@
+{
+  "name": "SVI 2.0 Pro ",
+  "description": "A long-form AI video generation platform featuring conversational AI guidance and interactive scene development.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

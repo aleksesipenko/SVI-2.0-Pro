@@ -1,0 +1,29 @@
+
+# SVI 2.0 Pro - Strategic Plan
+
+Phase 1: UI/UX Foundation (DONE)
+- Enterprise Zinc-950 theme.
+- Hub & Sidebar architecture.
+
+Phase 2: Director logic (DONE)
+- Gemini 3 interaction.
+- Anchor Frame + Motion Delta logic.
+
+Phase 3: Character Ledger (CURRENT)
+- Visual Cast Manager.
+- Persistent textual portraits for T5 stability.
+- Cross-project character reuse.
+
+Phase 4: Decision Tree direction
+- Director Option Cards (A/B/C) in chat.
+- Branching narrative support.
+
+Phase 5: Generation Backend
+- RunPod Serverless integration.
+- ComfyUI API Graph generation.
+- SVI FMLF implementation.
+
+Phase 6: Professional Tools
+- IndexedDB for local project library.
+- Frame extraction for continuity.
+- 480p to HD upscale pipeline simulation.

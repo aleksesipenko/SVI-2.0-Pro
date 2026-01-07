@@ -1,0 +1,22 @@
+
+# Technical Architecture: SVI 2.0 Pro v2.5
+
+1. Interface Layer
+- Web: React 19 (High-End Studio).
+- Bot: Telegram API (Simplified/Mobile Companion).
+
+2. Cognitive & Orchestration Layer
+- Intelligence: Gemini 3 Flash (Director Mode).
+- API Gateway: FastAPI (Task Dispatcher).
+- Queue Management: Redis + Celery (Priority-based).
+
+3. Generation Layer (GPU Cloud)
+- Engine: ComfyUI (Headless API Mode).
+- Hardware: RunPod Serverless (RTX 4090 / L40S).
+- Model: Wan 2.2 14B MoE (FP8 Quantized).
+- Continuity: SVI FMLF conditioning (Anchor Frame injection).
+
+4. Persistence & Storage
+- State: IndexedDB (Client) + Redis (Session).
+- Assets: S3-Compatible Storage (MinIO) for frames and videos.
+- Transcoding: FFmpeg Worker (H.264 optimization).

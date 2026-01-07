@@ -1,0 +1,20 @@
+
+# SVI 2.0 Pro: Visual Hub Specification
+
+## 1. Unified Interface
+The Visual Hub is the single point of entry for all creative work. It removes the friction of "switching between tabs" by making the Production dashboard the default state of the creative workspace.
+
+## 2. Visual Optimization (v2.1)
+- Card Brightness: Inactive cards use 70% opacity thumbnails; active/hover cards use 100% opacity with no grayscale.
+- Overlay Logic: Bottom-to-top gradients are lightened (max 80% at bottom) to ensure the generated imagery is the primary focal point.
+- Filter Clarity: Inactive filters (In Progress / Finalized) are kept at higher brightness levels to maintain legibility in dark environments.
+
+## 3. Interaction Hierarchy
+- Top-Right Zone: Reserved strictly for destructive/structural actions (Delete, Copy).
+- Content Zone: Bottom-aligned metadata including Title, Mode (T2V/I2V), and Status (Rendering/Completed).
+- Click Behavior: Clicking a card hydrates the Director Mode with specific project state.
+
+## 4. Status States
+- Rendering: Purple pulse animation + specialized border.
+- Completed: Green accent + static border.
+- Draft: Zinc-800 subtle borders.

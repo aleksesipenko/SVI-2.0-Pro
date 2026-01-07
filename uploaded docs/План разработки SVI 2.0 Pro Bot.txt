@@ -1,0 +1,363 @@
+# **Архитектурная спецификация и план разработки MVP: SVI 2.0 Pro Video Generator Bot**
+
+## **1\. Стратегическая архитектура и инфраструктурный дизайн**
+
+### **1.1 Обзор системы и философия проектирования**
+
+Разработка **SVI 2.0 Pro Video Generator Bot** представляет собой инженерную задачу высокой сложности, требующую конвергенции трех передовых областей современного искусственного интеллекта: крупномасштабных генеративных видеомоделей (Wan 2.2), агентных систем с низкой задержкой (Grok 4.1 Fast) и бессерверных вычислений (RunPod). Данный отчет служит не просто концептуальным наброском, а детальной технической спецификацией для создания MVP (Minimum Viable Product), который, несмотря на свой статус, должен обладать характеристиками production-grade системы. Мы не строим прототип для демонстрации; мы закладываем фундамент масштабируемой платформы, способной обслуживать тысячи конкурентных запросов с сохранением экономической эффективности.
+
+Основная цель проекта — демократизация доступа к рабочим процессам генерации **Stable Video Infinity (SVI) 2.0 Pro**, основанным на архитектуре Mixture-of-Experts (MoE) модели **Wan 2.2**.1 Традиционные интерфейсы для таких моделей (например, ComfyUI) слишком сложны для массового пользователя. Наша задача — скрыть эту сложность за интуитивно понятным интерфейсом Telegram, переложив когнитивную нагрузку по составлению технических промптов на LLM-агента. В отличие от стандартных чат-ботов, работающих по принципу "запрос-ответ" с миллисекундной задержкой, данная система оперирует тяжелыми асинхронными задачами. Генерация 5-секундного видео в высоком разрешении на архитектуре Wan 2.2 может занимать от 60 до 300+ секунд в зависимости от используемого GPU и загруженности сети.3 Это накладывает фундаментальные ограничения на архитектуру: синхронная обработка недопустима, состояние должно сохраняться во внешних хранилищах, а пользовательский опыт должен быть спроектирован с учетом длительного ожидания.
+
+Архитектура системы строится на **микросервисной, событийно-ориентированной топологии (event-driven microservices architecture)**. Ключевым архитектурным решением является строгое разделение (decoupling) интерфейсного слоя (Telegram Bot), когнитивного слоя (Grok 4.1) и генеративного слоя (RunPod/ComfyUI). Это позволяет масштабировать каждый компонент независимо. Текстовая обработка, требующая минимальных ресурсов CPU, может быть развернута на дешевых инстансах, в то время как видеорендеринг, потребляющий массивные ресурсы GPU/VRAM, выносится в эластичное облако. Такая сегрегация критически важна для оптимизации затрат: мы не должны платить за простой дорогостоящих GPU, пока пользователь набирает текст или агент Grok "размышляет" над структурой сцены.
+
+![][image1]
+
+### **1.2 Стратегия интеграции компонентов**
+
+Система состоит из четырех основных слоев, каждый из которых выбран на основе анализа производительности и функциональных требований, выявленных в ходе исследования:
+
+#### **1\. Слой взаимодействия (Interaction Layer)**
+
+Этот слой является точкой входа и "командным центром". Он реализован на базе python-telegram-bot в асинхронном режиме. Его основная задача — управление webhook ingress трафиком от Telegram API. В условиях потенциальной вирусной популярности бота (что часто случается с генеративными инструментами), использование polling-метода (периодического опроса сервера) является архитектурной ошибкой, ведущей к задержкам и лимитированию запросов. Webhook-архитектура позволяет реагировать мгновенно. Стейт-менеджмент здесь эфемерный: бот не хранит состояние генерации в памяти процесса, немедленно сбрасывая все тяжелые запросы в очередь Redis. Это делает сам бот "stateless" (безгражданственным), что позволяет при необходимости запустить 10-20 экземпляров бота за балансировщиком нагрузки без потери контекста.5
+
+#### **2\. Когнитивный слой (Cognitive Layer)**
+
+Это "мозг" системы, реализованный через API **Grok 4.1 Fast** (провайдер OpenRouter). Исследование показало, что пользователи редко предоставляют технически полные описания сцен (например, "киберпанк город, дождь, 8k, трассировка лучей, вид снизу"). Обычно запрос выглядит как "кот в космосе". Прямая передача такого запроса в Wan 2.2 приведет к посредственному результату. Grok 4.1 Fast выбран не случайно: он обладает уникальным сочетанием огромного контекстного окна (2 миллиона токенов) и крайне низкой стоимости ($0.20 за 1M входных токенов).6 Это позволяет реализовать агрессивную стратегию prompt engineering, где каждый пользовательский запрос оборачивается в массивный системный промпт, обучающий модель правилам кинематографии Wan 2.2, без существенного влияния на юнит-экономику проекта. Более того, 2M контекста позволяют хранить историю *всей* сюжетной линии пользователя, обеспечивая нарративную целостность при генерации серии видеоклипов (режим SVI).
+
+#### **3\. Слой оркестрации (Orchestration Layer)**
+
+Это "диспетчерская вышка", построенная на связке **Celery** и **Redis**. Видеогенерация — это блокирующая операция. Если процесс бота будет ждать ответа от GPU 60 секунд, он перестанет отвечать другим пользователям. Celery позволяет вынести выполнение задач в фоновые воркеры (background workers). Redis здесь выполняет двойную функцию:
+
+1. **Брокер сообщений (Message Broker):** Хранит очередь задач. Мы реализуем сегментацию очередей: priority\_queue для платных пользователей (обслуживается выделенными воркерами) и default\_queue для бесплатных. Это гарантирует SLA для премиум-сегмента.  
+2. **Хранилище состояния (State Store):** Хранит метаданные сессии, такие как last\_frame\_path (путь к последнему кадру предыдущего видео), необходимый для реализации "бесконечного" видео (SVI Loop). Это критически важно, так как Wan 2.2 I2V требует точной подачи опорного изображения для продолжения генерации.8
+
+#### **4\. Слой генерации (Generation Layer)**
+
+Это "фабрика", где происходят вычисления. Мы используем **RunPod Serverless**.10 Выбор в пользу Serverless (бессерверной архитектуры) вместо аренды постоянных GPU (Pods) обусловлен стохастической природой трафика телеграм-ботов. Трафик может быть нулевым ночью и пиковым вечером. Держать постоянный GPU (даже дешевый RTX 4090\) включенным 24/7 невыгодно при низкой утилизации. Serverless позволяет платить только за секунды работы GPU. В качестве среды выполнения используется кастомный Docker-контейнер, содержащий ComfyUI, чекпоинты моделей Wan 2.2 (14B параметров) и специфические кастомные ноды для SVI-воркфлоу (например, ComfyUI-Wan22FMLF и WanVideoWrapper).12
+
+### **1.3 Протоколы коммуникации и поток данных (Data Flow)**
+
+Жизненный цикл одного запроса на генерацию представляет собой сложный танец данных между компонентами. Рассмотрим его детально, чтобы Claude Code агент мог точно воспроизвести логику:
+
+1. **Ingest (Прием):** Пользователь отправляет текст или изображение. Бот валидирует входные данные (размер файла, длина текста) и создает запись в Redis со статусом STATE\_QUEUED.  
+2. **Enrichment (Обогащение \- Worker Type A):** Легковесный Celery-воркер (без GPU) подхватывает задачу. Он формирует запрос к API Grok 4.1 Fast. В системный промпт Grok внедряются инструкции по JSON-схеме ComfyUI. Grok возвращает обогащенный промпт (например, добавляя описание освещения и движения камеры) и технические параметры (seed, steps, cfg). Воркер обновляет payload задачи.  
+3. **Execution (Исполнение \- Worker Type B):** Тяжеловесный воркер (отвечающий за GPU-коммуникацию) берет обогащенную задачу. Он формирует HTTP POST запрос к эндпоинту RunPod Serverless. В теле запроса содержится полный граф ComfyUI workflow в формате JSON, динамически модифицированный под текущий промпт.  
+4. **Polling/Webhook (Ожидание):** RunPod запускает контейнер. Поскольку генерация длится долго, мы не держим HTTP-соединение открытым. Воркер переходит в режим ожидания вебхука от RunPod (предпочтительно) или запускает механизм поллинга статуса (/status endpoint) с экспоненциальной задержкой, чтобы не перегружать API.14  
+5. **Post-Processing (Пост-процессинг):** По завершении RunPod возвращает URL на сгенерированный видеофайл (обычно во временном хранилище или S3). Воркер скачивает файл. Здесь происходит критический этап для SVI: извлечение последнего кадра (Last Frame Extraction) и сохранение его в постоянное хранилище (S3/MinIO). Это "якорь" для следующей генерации. Затем видео транскодируется с помощью FFmpeg в формат, оптимизированный для Telegram (H.264, yuv420p, \<50MB).15  
+6. **Delivery (Доставка):** Готовый файл загружается на серверы Telegram и отправляется пользователю.
+
+## **2\. Вычислительный субстрат: Wan 2.2 и оркестрация GPU**
+
+### **2.1 Спецификация модели: Анализ Wan 2.2**
+
+Ядром продукта является модель **Wan 2.2**, в частности, вариант с 14 миллиардами параметров (14B), который представляет собой значительный скачок в возможностях открытых моделей генерации видео. Разработанная Alibaba Cloud, эта модель использует архитектуру Mixture-of-Experts (MoE).1 В отличие от "плотных" (dense) моделей, где для каждого токена активируются все параметры сети, MoE активирует только часть экспертов. Это теоретически позволяет достичь качества модели на 14B параметров при вычислительных затратах, сопоставимых с моделями меньшего размера. Однако, на практике для инференса требуется загрузка *всех* весов в VRAM, что создает высокие требования к памяти видеокарты.
+
+Ключевые технические характеристики 1:
+
+* **Архитектура:** Hybrid Flow Diffusion с MoE.  
+* **Варианты моделей:**  
+  * **Wan2.2-T2V-A14B:** Text-to-Video. Основная "рабочая лошадка" для генерации первого клипа в цепочке. Требует значительного объема VRAM для хранения весов экспертов.  
+  * **Wan2.2-I2V-A14B:** Image-to-Video. Критически важна для реализации функционала "SVI" (Stable Video Infinity). Она принимает последний кадр предыдущего видео и использует его как начальное условие латентного пространства для следующего, обеспечивая плавный переход.  
+  * **Wan2.2-TI2V-5B:** Гибридная облегченная модель. В рамках стратегии MVP "Pro" версии мы будем использовать 14B модели для обеспечения максимального качества, но 5B вариант должен быть предусмотрен в коде как "fallback" (резервный) вариант для моментов пиковой нагрузки или для free-tier пользователей.  
+* **Поддержка разрешений:** Нативное 720p (1280x720) и 480p. Для Telegram оптимальным является 720p, так как более высокие разрешения непропорционально увеличивают время генерации и размер файла.
+
+### **2.2 Стратегия выбора GPU: Экономика против Латентности**
+
+Выбор конкретного типа GPU на платформе RunPod является единственным наиболее важным экономическим решением для MVP. Ошибка здесь может привести к тому, что юнит-экономика не сойдется (стоимость генерации превысит готовность пользователя платить или рекламные доходы). Анализ ценообразования RunPod и бенчмарков Wan 2.2 10 позволяет выделить четкие уровни целесообразности.
+
+![][image2]
+
+#### **2.2.1 Рекомендация "Sweet Spot": NVIDIA RTX 4090 (24GB)**
+
+Для стадии MVP **RTX 4090** является безальтернативным выбором по соотношению цена/производительность.
+
+* **Экономическая эффективность:** При стоимости около \~$0.34/час 18, это в 3-4 раза дешевле энтерпрайз-карт уровня A100.  
+* **Производительность:** Бенчмарки показывают, что при использовании квантования FP8 (которое поддерживается новыми версиями torch и специфическими нодами Wan 2.2 17), модель 14B помещается в 24GB VRAM. Время генерации 5-секундного клипа составляет около 60 секунд 4, что находится на границе психологического комфорта пользователя, но приемлемо для "тяжелой" генерации.  
+* **Требования к оптимизации:** Использование 24GB VRAM для модели 14B находится "на грани". Для предотвращения ошибок CUDA Out of Memory (OOM), Claude Code агент должен настроить ComfyUI на использование **FP8 scaled weights** (wan2.2\_t2v\_high\_noise\_14B\_fp8\_scaled.safetensors) и включить агрессивную стратегию выгрузки модели (Model Offloading) в системную RAM.20 Также необходимо использовать VAE в формате bf16 или fp16 для экономии памяти на этапе декодирования пикселей.
+
+#### **2.2.2 Путь масштабирования (Production Scale): A100 (80GB) или L40S**
+
+По мере роста базы пользователей система должна быть готова к миграции на **L40S** или **A100**.
+
+* **L40S (48GB):** Стоимость \~$0.79/час. Главное преимущество — 48GB VRAM. Это позволяет держать *всю* модель и VAE в памяти видеокарты одновременно, не прибегая к свапу в системную RAM. Это сокращает время инференса и позволяет обрабатывать более сложные промпты или batch-запросы (параллельная генерация нескольких видео).22  
+* **A100 (80GB):** Стоимость \~$1.19/час. Необходима, если мы перейдем к стратегии continuous batching (обслуживание десятков пользователей одним инстансом). Высокая пропускная способность памяти HBM2e (до 2 TB/s против 1 TB/s у 4090\) дает прирост скорости, но для одиночных запросов (batch=1) разница с 4090 не оправдывает трехкратную разницу в цене.19
+
+### **2.3 Развертывание на RunPod Serverless**
+
+Использование RunPod Serverless требует особого внимания к проблеме "холодного старта" (Cold Start).
+
+* **Проблема:** Образ контейнера с ComfyUI и моделями Wan 2.2 весит более 20-30 ГБ. Загрузка такого образа "с нуля" может занимать 2-5 минут, что неприемлемо.  
+* **Решение:** Использование **Network Volume** (сетевого диска) в RunPod. Модели не должны быть зашиты (baked in) в Docker-образ. Они должны лежать на подключенном сетевом томе, который монтируется к контейнеру при старте за секунды.  
+* **Стратегия "Теплого" контейнера:** Мы настроим параметр container\_disk\_size и idle timeout. Воркер не должен умирать сразу после выполнения задачи. Он должен жить еще 300 секунд (5 минут). Это позволит пользователю, который генерирует серию видео (SVI Loop), попадать на "горячий" контейнер, где модель уже загружена в VRAM, сокращая время ожидания второго видео с 90 секунд до 45 секунд.24
+
+## **3\. Когнитивный слой: Агентный промптинг с Grok 4.1 Fast**
+
+### **3.1 Логика интеграции Grok 4.1**
+
+Исследования показывают, что пользователи мессенджеров склонны к крайне коротким, абстрактным запросам. Прямая трансляция запроса "сделай красиво" в Wan 2.2 приведет к генерации артефактов или скучных видео. **Grok 4.1 Fast** выступает в роли "семантического моста" и "кинооператора". Он "галлюцинирует" недостающие детали — освещение, угол камеры, текстуру пленки, физику движения — которые необходимы Wan 2.2 для оптимальной работы.25
+
+**Почему Grok 4.1 Fast?**
+
+* **Скорость и Стоимость:** Модель оптимизирована для использования инструментов (tool use) и обладает агрессивным ценообразованием ($0.20 за 1M входных токенов).6 Это делает экономически целесообразным "оборачивать" *каждый* пользовательский запрос в вызов LLM, не опасаясь раздувания бюджета.  
+* **Контекстное окно:** 2 миллиона токенов 7 позволяют агенту "помнить" всю историю генерации текущей сессии. Если пользователь сделал 10 видео подряд, создавая сериал, Grok может проанализировать промпты всех 10 предыдущих видео и сгенерировать 11-й так, чтобы он стилистически и событийно соответствовал общей арке, обеспечивая консистентность персонажей и локаций, что критично для SVI.
+
+### **3.2 Системный промпт и Структурированный вывод (JSON Schema)**
+
+Для интеграции с ComfyUI, который ожидает жесткие параметры, Grok должен возвращать не текст, а валидный JSON-объект. Мы будем использовать feature "Structured Output" (структурированный вывод) или жесткий prompt engineering с JSON-примером.
+
+Стратегия системного промпта:  
+Системный промпт должен определять персону "Экспертного режиссера кинематографии" и навязывать использование "Wan 2.2 Prompting Guide".21 Он должен знать технические ограничения модели (например, избегать запросов на текст внутри видео, так как Wan 2.2 плохо генерирует текст).  
+Спецификация JSON-схемы:  
+Промпт должен требовать ответ в следующем формате:
+
+JSON
+
+{  
+  "positive\_prompt": "string: highly detailed description...",  
+  "negative\_prompt": "string: technical exclusions (blur, watermark, etc)",  
+  "seed": "integer: random seed for reproducibility",  
+  "aspect\_ratio": "string: 16:9 or 9:16 based on user intent",  
+  "motion\_strength": "float: 0.0 to 5.0",  
+  "camera\_movement": "string: 'pan right', 'zoom in', 'static'"  
+}
+
+![][image3]
+
+### **3.3 Контекстная непрерывность (Аспект "Агента")**
+
+Для реализации SVI (Stable Video Infinity), агент должен управлять состоянием мира.
+
+* **Механизм:** Когда пользователь пишет "теперь пусть пойдет дождь" в ответ на предыдущее видео, backend-бот извлекает из Redis previous\_prompt и summary контекста.  
+* **Инжиниринг запроса:** Сообщение к Grok выглядит так: *"Пользователь хочет расширить предыдущее видео. Контекст: \[предыдущий промпт\]. Новая инструкция: 'пусть пойдет дождь'. Обнови промпт, чтобы отразить это изменение, сохраняя описание персонажа и локации неизменным, но добавляя погодный эффект."*  
+* **Результат:** Grok генерирует *новый* полный промпт, который объединяет старый контекст и новую динамику. Этот промпт затем подается в I2V (Image-to-Video) workflow вместе с последним кадром предыдущего видео. Это решает проблему "амнезии" модели, когда при смене кадра персонаж меняет одежду или лицо.
+
+## **4\. Генеративный рабочий процесс: Реализация SVI 2.0 Pro и ComfyUI**
+
+### **4.1 Логика Workflow SVI 2.0 Pro**
+
+Термин "SVI 2.0 Pro" (Stable Video Infinity) в контексте данного проекта относится к специфическому паттерну ComfyUI workflow, который позволяет создавать бесконечные видеопотоки путем бесшовного сшивания клипов. Основным инструментом здесь является модель **Wan 2.2 Image-to-Video (I2V)**.12
+
+Техника "First-Middle-Last Frame" (FMLF):  
+Простое использование последнего кадра как первого (loopback) часто приводит к деградации качества: цвета тускнеют, появляются артефакты, движение затухает. SVI 2.0 Pro использует более сложную стратегию кондиционирования, часто называемую FMLF.13
+
+1. **Входные данные:** "Последний кадр" видео А становится "Начальным кадром" видео Б.  
+2. **Кондиционирование:** Используется специальная нода (часто из набора ComfyUI-Wan22FMLF или ComfyUI-WanVideoWrapper), которая фиксирует этот кадр в латентном пространстве.  
+3. **Стратегия сэмплирования (Dual Expert):** SVI 2.0 использует стратегию разделения сэмплеров.  
+   * **High Noise Sampler (Высокий шум):** Отвечает за общую структуру и движение. Здесь denoise выставляется высоким (например, 1.0), но начало генерации жестко привязано к input-изображению.  
+   * **Low Noise Sampler (Низкий шум):** Отвечает за детализацию. Латент, полученный от первого сэмплера, передается во второй для финализации.21  
+   * **Интеграция:** Workflow должен явно разделять процесс сэмплирования на два этапа, передавая латент от High Noise к Low Noise. Это критически важно для качества Wan 2.2.
+
+### **4.2 Требования к Custom Nodes (Кастомные ноды)**
+
+Агент Claude Code должен гарантировать, что Docker-образ RunPod содержит следующие специфические наборы нод, так как стандартная установка ComfyUI не сможет запустить SVI workflow:
+
+1. **ComfyUI-WanVideoWrapper (by Kijai):** Это наиболее актуальный и оптимизированный враппер для моделей Wan 2.2. Он поддерживает квантование FP8 "из коробки" и эффективное управление памятью.16 Без него запуск 14B модели на 24GB VRAM будет крайне нестабильным.  
+2. **ComfyUI-Wan22FMLF (by wallen0322):** Содержит специфическую логику "SVI Pro" и ноды для якорения кадров (frame anchoring), необходимые для бесшовности.13  
+3. **ComfyUI-KJNodes:** Набор вспомогательных нод для работы с изображениями (ресайз, кроп, batch management), необходимый для подготовки кадров перед подачей в модель.33
+
+### **4.3 Структура API Payload для ComfyUI**
+
+Backend будет взаимодействовать с ComfyUI через эндпоинт /prompt (стандартный API ComfyUI). Важно понимать: API ComfyUI не принимает простые параметры, он принимает *полный граф выполнения* (workflow graph) в формате JSON. Агент должен динамически конструировать этот граф в зависимости от типа запроса:
+
+* **Тип A (T2V \- Start):** Загружает граф с Wan2.2-T2V-A14B. Вход: Текстовый промпт \+ Разрешение. Ноды: CheckpointLoader, WanT2V, VideoOutput.  
+* **Тип B (I2V \- Extend):** Загружает граф с Wan2.2-I2V-A14B. Вход: Текстовый промпт \+ LoadImage (путь к последнему кадру предыдущего видео). Здесь критически важно программно подменять значение пути к файлу в ноде LoadImage на путь к извлеченному кадру в файловой системе RunPod.
+
+## **5\. Backend-инженерия: Асинхронная оркестрация и управление состоянием**
+
+### **5.1 Архитектура: Python, Celery и Redis**
+
+Backend представляет собой Python-приложение, структурированное для работы по принципу "fire-and-forget" (отправил и забыл), что характерно для долгоживущих задач видеогенерации.
+
+Машина состояний (State Machine) в Redis:  
+Для каждой пользовательской сессии мы определяем конечный автомат (FSM), состояние которого хранится в Redis. Это позволяет системе пережить перезагрузку контейнеров бота без потери текущих генераций.8
+
+* STATE\_IDLE: Пользователь в чате, активных задач нет.  
+* STATE\_QUEUED: Запрос принят, ожидает свободного воркера/GPU.  
+* STATE\_ENRICHING: Grok обрабатывает промпт.  
+* STATE\_GENERATING: Задача отправлена в RunPod, идет поллинг результата.  
+* STATE\_COMPLETED: Видео скачано, отправлено, ожидание реакции (extend/remix).
+
+**Структура ключей Redis:**
+
+* user:{tg\_id}:session: Hash-таблица, содержащая current\_state, last\_video\_id, last\_frame\_s3\_key, previous\_prompt\_text. TTL (время жизни) ключа — 24 часа.  
+* queue:inference:high: Список (List) ID задач для приоритетных пользователей.  
+* queue:inference:default: Список ID задач для остальных.
+
+### **5.2 Конвейер задач Celery (Task Pipeline)**
+
+Мы определим три основных типа задач Celery, выстроенных в цепочку (chain):
+
+Python
+
+\# Концептуальная структура задач для Claude Code
+
+@celery.task(bind=True, max\_retries=3)  
+def process\_user\_prompt(self, user\_id, prompt\_text, history):  
+    """Этап 1: Обогащение через Grok"""  
+    try:  
+        \# Вызов Grok API с контекстом истории  
+        optimized\_data \= grok\_client.reason(prompt\_text, history)  
+        return optimized\_data \# Передается в следующую задачу  
+    except OpenRouterError as e:  
+        self.retry(exc=e, countdown=2)
+
+@celery.task(bind=True)  
+def trigger\_runpod\_generation(self, optimized\_data):  
+    """Этап 2: Запуск GPU-задачи"""  
+    \# Выбор нужного JSON-графа (T2V или I2V)  
+    workflow\_json \= construct\_workflow(optimized\_data)  
+    \# POST запрос к RunPod  
+    response \= runpod\_client.run\_sync(workflow\_json) \# Или run\_async \+ polling  
+    return response\['id'\]
+
+@celery.task  
+def finalize\_video\_generation(runpod\_job\_id):  
+    """Этап 3: Пост-процессинг и доставка"""  
+    \# Ожидание завершения, скачивание видео  
+    \# Извлечение последнего кадра \-\> Upload в S3  
+    \# Транскодинг FFmpeg  
+    \# Отправка в Telegram
+
+### **5.3 Логика Telegram бота: Webhook против Polling**
+
+Для MVP **Webhooks** являются обязательным требованием для масштабируемости. Polling (метод getUpdates) подходит только для разработки на локальной машине.
+
+* **Фреймворк:** python-telegram-bot версии 21.x (полностью асинхронный).  
+* **Управление ожиданием:** Поскольку пользователь ждет 60+ секунд, простого статуса "Typing..." (который исчезает через 5 секунд) недостаточно. Бот должен отправить сообщение: "🎬 *Начинаю съемку...* (Очередь: 3)". По мере изменения состояния в Redis (через Celery-хуки), бот должен *редактировать* это сообщение: "🧠 *Пишу сценарий...*" \-\> "🎨 *Рендеринг (25%)...*" \-\> "🚀 *Загрузка...*". Это создает ощущение живого процесса и снижает тревожность пользователя.
+
+## **6\. Конвейер обработки и доставки видео**
+
+### **6.1 Оптимизация FFmpeg для Telegram**
+
+Telegram имеет строгие ограничения: файлы больше 50 МБ не воспроизводятся автоматически (autoplay), а файлы с экзотическими кодеками могут не открываться на старых Android-устройствах. Сырой выход ComfyUI (часто несжатый или высокобитрейтный MP4) непригоден для прямой отправки.
+
+Транскодинг-пайплайн:  
+Backend должен запускать локальный экземпляр FFmpeg (на CPU Celery-воркера, а не на дорогом GPU RunPod) для обработки видео перед отправкой.  
+Настройки баланса Качество/Размер 15:
+
+* **Кодек:** **H.264 (libx264)**. Хотя H.265 (HEVC) эффективнее на 30-50%, H.264 обладает 100% совместимостью со всеми клиентами Telegram (Desktop/Mobile/Web). Для MVP совместимость важнее экономии трафика.  
+* **Контейнер:** MP4.  
+* **Пиксельный формат:** yuv420p (Критично для отображения цветов на мобильных экранах).  
+* **CRF (Constant Rate Factor):** Значение **23-26**. Это обеспечивает визуальное качество, неотличимое от оригинала на экране смартфона, но кардинально снижает битрейт.  
+* **Пресет:** faster или fast. medium или slow дают чуть лучший файл, но задержка транскодирования увеличивается непропорционально.  
+* **Аудио:** Если аудио не генерируется (SVI 2.0 пока фокусируется на видео), аудиодорожку нужно принудительно удалять флагом \-an для экономии места.  
+* **Moov atom:** Флаг \-movflags \+faststart обязателен. Он переносит метаданные в начало файла, позволяя видео начать проигрываться в Telegram до его полной загрузки (стриминг).
+
+**Шаблон команды:**
+
+Bash
+
+ffmpeg \-i input\_raw.mp4 \-c:v libx264 \-preset fast \-crf 26 \-pix\_fmt yuv420p \-an \-movflags \+faststart output\_telegram.mp4
+
+### **6.2 Механизм "Бесконечного" цикла (SVI Data Handling)**
+
+Для поддержки функции "Infinite" (SVI) система должна выполнять специфическую процедуру сохранения данных **до** транскодирования:
+
+1. **Извлечение последнего кадра:** До того, как сырое видео будет сжато H.264 (который является lossy-кодеком и вносит артефакты), backend должен извлечь абсолютно последний кадр из *исходного* (сырого) видеофайла.  
+2. **Сохранение:** Этот кадр сохраняется как PNG (lossless) в S3-бакет (или RunPod Network Volume, если он общий).  
+3. **Референс:** URL или путь к этому PNG сохраняется в сессии Redis под ключом last\_frame\_path.  
+4. Следующий цикл: Когда пользователь нажимает кнопку "Extend" (Расширить), этот конкретный PNG-файл скачивается (или мапится) в папку input ComfyUI, и путь к нему прописывается в ноде LoadImage I2V-воркфлоу.  
+   Критическое замечание: Никогда не используйте кадр из сжатого Telegram-видео для продолжения генерации. Артефакты компрессии будут накапливаться экспоненциально, превращая видео в "кашу" уже на 3-й итерации.37
+
+## **7\. План реализации и спецификации кода (Roadmap)**
+
+Этот раздел предоставляет агенту Claude Code точную структуру директорий и версии библиотек, необходимые для создания каркаса проекта.
+
+### **7.1 Структура директорий**
+
+svi-bot-mvp/  
+├── bot/  
+│ ├── main.py \# Точка входа Telegram Bot (Webhook server)  
+│ ├── handlers.py \# Обработчики команд и сообщений  
+│ ├── keyboards.py \# Определения Inline-кнопок (Extend, Remix)  
+│ └── states.py \# Определения состояний FSM  
+├── backend/  
+│ ├── celery\_app.py \# Конфигурация Celery и брокера  
+│ ├── tasks.py \# Асинхронные задачи (Grok, RunPod, FFmpeg)  
+│ ├── grok\_agent.py \# Обертка OpenRouter API с логикой промптинга  
+│ └── runpod\_client.py \# Клиент RunPod Serverless  
+├── workflows/  
+│ ├── wan\_t2v\_14b\_fp8.json \# JSON граф ComfyUI для Text-to-Video  
+│ └── wan\_svi\_extend\_fp8.json \# JSON граф ComfyUI для Image-to-Video  
+├── database/  
+│ └── redis\_manager.py \# Хелперы для работы с Redis (Session management)  
+├── utils/  
+│ ├── video\_proc.py \# Обертки FFmpeg  
+│ └── s3\_uploader.py \# Работа с объектным хранилищем  
+├── docker/  
+│ ├── Dockerfile.bot \# Контейнер для бота и Celery воркера  
+│ └── Dockerfile.runpod \# Спецификация для кастомного GPU-контейнера  
+├── requirements.txt  
+└──.env
+
+### **7.2 Ключевые зависимости и версии**
+
+* python-telegram-bot==21.x: Использовать только асинхронную версию.  
+* celery==5.4.x: Стабильная версия для продакшена.  
+* redis==5.0.x: Клиент для Redis.  
+* runpod==1.6.x: Официальный Python SDK, упрощает работу с эндпоинтами.  
+* openai==1.x: Используется как клиент для OpenRouter (Grok API совместим с OpenAI SDK).  
+* ffmpeg-python: Python-биндинги для удобного вызова FFmpeg.  
+* boto3: Если используется S3 для хранения кадров.
+
+### **7.3 Пошаговая инструкция сборки для Claude**
+
+1. **Фаза 1: Инфраструктурный базис.**  
+   * Развернуть Redis (локально или cloud).  
+   * Создать RunPod Serverless Endpoint. В качестве Template использовать runpod/worker-comfy:3.1.0 (или новее).  
+   * *Критично:* Написать скрипт startup.sh, который при старте пода клонирует репозитории ComfyUI-WanVideoWrapper и ComfyUI-Wan22FMLF в папку custom\_nodes, так как их нет в базовом образе.38  
+2. **Фаза 2: Валидация Workflow.**  
+   * Вручную протестировать SVI workflow в RunPod Sandbox (интерактивный режим).  
+   * Экспортировать JSON в формате API (не Save, а "Export API Format").  
+   * *Важно:* Идентифицировать точные Node ID для нод "Load Checkpoint", "Ksampler" и "Empty Latent". Эти ID *изменятся*, если вы будете редактировать граф, поэтому их нужно зафиксировать в константах Python-кода.  
+3. **Фаза 3: Логика Backend.**  
+   * Реализовать grok\_agent.py. Убедиться, что JSON-валидация работает корректно и отсеивает мусорный вывод.  
+   * Написать задачи Celery. Реализовать передачу данных между задачами (chaining).  
+4. **Фаза 4: Интерфейс Бота.**  
+   * Написать хендлеры. Реализовать эмуляцию прогресса через редактирование сообщений (Message Editing), чтобы пользователь видел, что бот "жив" в течение 60 секунд ожидания.  
+5. **Фаза 5: SVI Loop и Тестирование.**  
+   * Реализовать логику сохранения последнего кадра в S3.  
+   * Протестировать кнопку "Extend": убедиться, что путь к файлу в S3 корректно передается в ноду LoadImage следующего запуска и RunPod имеет права на чтение этого файла (или файл предварительно скачивается воркером RunPod).
+
+#### **Works cited**
+
+1. Wan2.2: Alibaba's Open‑Source Breakthrough in AI Video Generation \- NYU Shanghai RITS, accessed on January 5, 2026, [https://rits.shanghai.nyu.edu/ai/wan2-2-alibabas-open%E2%80%91source-breakthrough-in-ai-video-generation](https://rits.shanghai.nyu.edu/ai/wan2-2-alibabas-open%E2%80%91source-breakthrough-in-ai-video-generation)  
+2. Alibaba Releases Wan2.2 to Uplift Cinematic Video Production, accessed on January 5, 2026, [https://www.alibabacloud.com/en/press-room/alibaba-releases-wan2-2-to-uplift-cinematic?\_p\_lc=1](https://www.alibabacloud.com/en/press-room/alibaba-releases-wan2-2-to-uplift-cinematic?_p_lc=1)  
+3. What's the generation speed of WAN2.2 videos? : r/comfyui \- Reddit, accessed on January 5, 2026, [https://www.reddit.com/r/comfyui/comments/1ozh1uz/whats\_the\_generation\_speed\_of\_wan22\_videos/](https://www.reddit.com/r/comfyui/comments/1ozh1uz/whats_the_generation_speed_of_wan22_videos/)  
+4. Out of curiosity, how long does a 5 second video from WAN 2.2 takes to generate on a single NVIDIA H100? : r/StableDiffusion \- Reddit, accessed on January 5, 2026, [https://www.reddit.com/r/StableDiffusion/comments/1mug3gs/out\_of\_curiosity\_how\_long\_does\_a\_5\_second\_video/](https://www.reddit.com/r/StableDiffusion/comments/1mug3gs/out_of_curiosity_how_long_does_a_5_second_video/)  
+5. Two design patterns for Telegram Bots \- DEV Community, accessed on January 5, 2026, [https://dev.to/madhead/two-design-patterns-for-telegram-bots-59f5](https://dev.to/madhead/two-design-patterns-for-telegram-bots-59f5)  
+6. Grok 4.1 Fast Redefines AI Cost Optimization \- AI CERTs News, accessed on January 5, 2026, [https://www.aicerts.ai/news/grok-4-1-fast-redefines-ai-cost-optimization/](https://www.aicerts.ai/news/grok-4-1-fast-redefines-ai-cost-optimization/)  
+7. Grok 4.1 Fast \- API, Providers, Stats \- OpenRouter, accessed on January 5, 2026, [https://openrouter.ai/x-ai/grok-4.1-fast](https://openrouter.ai/x-ai/grok-4.1-fast)  
+8. Distributed architecture with celery \- blog \- Michal Szczepanski \- vane.pl, accessed on January 5, 2026, [https://vane.pl/distributed-architecture-with-celery/](https://vane.pl/distributed-architecture-with-celery/)  
+9. Scheduling Background Tasks in Python with Celery and RabbitMQ | AppSignal Blog, accessed on January 5, 2026, [https://blog.appsignal.com/2025/08/27/scheduling-background-tasks-in-python-with-celery-and-rabbitmq.html](https://blog.appsignal.com/2025/08/27/scheduling-background-tasks-in-python-with-celery-and-rabbitmq.html)  
+10. Pricing | Runpod GPU cloud computing rates, accessed on January 5, 2026, [https://www.runpod.io/pricing](https://www.runpod.io/pricing)  
+11. GPU Pricing \- Runpod, accessed on January 5, 2026, [https://www.runpod.io/gpu-pricing](https://www.runpod.io/gpu-pricing)  
+12. Summary of Community Workflow Variants (Under Test), Tutorals ..., accessed on January 5, 2026, [https://github.com/vita-epfl/Stable-Video-Infinity/issues/51](https://github.com/vita-epfl/Stable-Video-Infinity/issues/51)  
+13. SVI 2.0 Pro for Wan 2.2 is amazing, allowing infinite length videos with no visible transitions. This took only 340 seconds to generate, 1280x720 continuous 20 seconds long video, fully open source. Someone tell James Cameron he can get Avatar 4 done sooner and cheaper. : r/StableDiffusion \- Reddit, accessed on January 5, 2026, [https://www.reddit.com/r/StableDiffusion/comments/1q1jmz7/svi\_20\_pro\_for\_wan\_22\_is\_amazing\_allowing/](https://www.reddit.com/r/StableDiffusion/comments/1q1jmz7/svi_20_pro_for_wan_22_is_amazing_allowing/)  
+14. Deploy ComfyUI as a Serverless API Endpoint | Runpod Blog, accessed on January 5, 2026, [https://www.runpod.io/blog/deploy-comfyui-as-a-serverless-api-endpoint](https://www.runpod.io/blog/deploy-comfyui-as-a-serverless-api-endpoint)  
+15. How to Encode Videos to H.264/H.265 with FFmpeg \- Cincopa.com, accessed on January 5, 2026, [https://www.cincopa.com/learn/how-to-encode-videos-to-h-264-h-265-with-ffmpeg](https://www.cincopa.com/learn/how-to-encode-videos-to-h-264-h-265-with-ffmpeg)  
+16. Wan-Video/Wan2.2: Wan: Open and Advanced Large-Scale Video Generative Models \- GitHub, accessed on January 5, 2026, [https://github.com/Wan-Video/Wan2.2](https://github.com/Wan-Video/Wan2.2)  
+17. Wan-AI/Wan2.2-T2V-A14B \- Hugging Face, accessed on January 5, 2026, [https://huggingface.co/Wan-AI/Wan2.2-T2V-A14B](https://huggingface.co/Wan-AI/Wan2.2-T2V-A14B)  
+18. Runpod GPU pricing: A complete breakdown and platform comparison | Blog \- Northflank, accessed on January 5, 2026, [https://northflank.com/blog/runpod-gpu-pricing](https://northflank.com/blog/runpod-gpu-pricing)  
+19. Multiple 4090s instead of H100? : r/LocalLLaMA \- Reddit, accessed on January 5, 2026, [https://www.reddit.com/r/LocalLLaMA/comments/188boew/multiple\_4090s\_instead\_of\_h100/](https://www.reddit.com/r/LocalLLaMA/comments/188boew/multiple_4090s_instead_of_h100/)  
+20. Review Generative AI Wan 2.2 T2V 14B Model \- Ojambo, accessed on January 5, 2026, [https://www.ojambo.com/review-generative-ai-wan-2-2-t2v-14b-model](https://www.ojambo.com/review-generative-ai-wan-2-2-t2v-14b-model)  
+21. Wan2.2 Video Generation ComfyUI Official Native Workflow Example, accessed on January 5, 2026, [https://docs.comfy.org/tutorials/video/wan/wan2\_2](https://docs.comfy.org/tutorials/video/wan/wan2_2)  
+22. Why NVIDIA L40S Is Replacing A100 For AI Inference \- AceCloud, accessed on January 5, 2026, [https://acecloud.ai/blog/nvidia-l40s-vs-a100-ai-inference/](https://acecloud.ai/blog/nvidia-l40s-vs-a100-ai-inference/)  
+23. Comparing NVIDIA H100 vs A100 GPUs for AI Workloads | OpenMetal IaaS, accessed on January 5, 2026, [https://openmetal.io/resources/blog/nvidia-h100-vs-a100-gpu-comparison/](https://openmetal.io/resources/blog/nvidia-h100-vs-a100-gpu-comparison/)  
+24. Deploy ComfyUI with Serverless \- Runpod Documentation, accessed on January 5, 2026, [https://docs.runpod.io/tutorials/serverless/comfyui](https://docs.runpod.io/tutorials/serverless/comfyui)  
+25. Grok 4.1 Fast and Agent Tools API \- xAI, accessed on January 5, 2026, [https://x.ai/news/grok-4-1-fast](https://x.ai/news/grok-4-1-fast)  
+26. Grok-code-fast-1 Prompt Guide: All You Need to Know \- CometAPI, accessed on January 5, 2026, [https://www.cometapi.com/en/grok-code-fast-1-prompt-guide/](https://www.cometapi.com/en/grok-code-fast-1-prompt-guide/)  
+27. Grok 4 Fast \- API, Providers, Stats \- OpenRouter, accessed on January 5, 2026, [https://openrouter.ai/x-ai/grok-4-fast](https://openrouter.ai/x-ai/grok-4-fast)  
+28. WAN2.2 SVI v2.0 Pro Simplicity \- infinite prompt, separate prompt lengths : r/StableDiffusion, accessed on January 5, 2026, [https://www.reddit.com/r/StableDiffusion/comments/1q3wjyo/wan22\_svi\_v20\_pro\_simplicity\_infinite\_prompt/](https://www.reddit.com/r/StableDiffusion/comments/1q3wjyo/wan22_svi_v20_pro_simplicity_infinite_prompt/)  
+29. SVI 2.0 Pro Released \- Infinite-Length Video Generation with Wan 2.2 Support, accessed on January 5, 2026, [https://comfyui-wiki.com/en/news/2025-12-27-svi-2-0-pro-wan-2-2-release](https://comfyui-wiki.com/en/news/2025-12-27-svi-2-0-pro-wan-2-2-release)  
+30. ComfyUI-Wan22FMLF/example\_workflows/SVI pro.json at main ..., accessed on January 5, 2026, [https://github.com/wallen0322/ComfyUI-Wan22FMLF/blob/main/example\_workflows/SVI%20pro.json](https://github.com/wallen0322/ComfyUI-Wan22FMLF/blob/main/example_workflows/SVI%20pro.json)  
+31. Wan2.2 ComfyUI Workflow Complete Usage Guide, Official \+ Community Versions (Kijai, GGUF) Workflow Strategy, accessed on January 5, 2026, [https://comfyui-wiki.com/en/tutorial/advanced/video/wan2.2/wan2-2](https://comfyui-wiki.com/en/tutorial/advanced/video/wan2.2/wan2-2)  
+32. SVI 2.2 is here\! · Issue \#1718 · kijai/ComfyUI-WanVideoWrapper \- GitHub, accessed on January 5, 2026, [https://github.com/kijai/ComfyUI-WanVideoWrapper/issues/1718](https://github.com/kijai/ComfyUI-WanVideoWrapper/issues/1718)  
+33. Deploying your ComfyUI workflows on the Runpod serverless | by Areeb Ahmad \- Medium, accessed on January 5, 2026, [https://medium.com/@ahmadareeb3026/deploying-your-comfyui-workflows-on-the-runpod-serverless-2f0f0a79a8e8](https://medium.com/@ahmadareeb3026/deploying-your-comfyui-workflows-on-the-runpod-serverless-2f0f0a79a8e8)  
+34. Celery with Redis backend \- Possible to get task state direct from db? \- Stack Overflow, accessed on January 5, 2026, [https://stackoverflow.com/questions/37307966/celery-with-redis-backend-possible-to-get-task-state-direct-from-db](https://stackoverflow.com/questions/37307966/celery-with-redis-backend-possible-to-get-task-state-direct-from-db)  
+35. FFMPEG and h.265 \- WimsWorld \- WordPress.com, accessed on January 5, 2026, [https://wimsworld.wordpress.com/2018/03/28/ffmpeg-and-h-265/](https://wimsworld.wordpress.com/2018/03/28/ffmpeg-and-h-265/)  
+36. h265 worse quality than h264, why? (I thought h265 would have produce the same quality at lower bitrate compared to h264, but In my case It's worse) : r/ffmpeg \- Reddit, accessed on January 5, 2026, [https://www.reddit.com/r/ffmpeg/comments/195kmmv/h265\_worse\_quality\_than\_h264\_why\_i\_thought\_h265/](https://www.reddit.com/r/ffmpeg/comments/195kmmv/h265_worse_quality_than_h264_why_i_thought_h265/)  
+37. WAN I2V "looping" when going over a certain time frame : r/comfyui \- Reddit, accessed on January 5, 2026, [https://www.reddit.com/r/comfyui/comments/1njwkwv/wan\_i2v\_looping\_when\_going\_over\_a\_certain\_time/](https://www.reddit.com/r/comfyui/comments/1njwkwv/wan_i2v_looping_when_going_over_a_certain_time/)  
+38. Deploy ComfyUI with RunPod Serverless \- DEV Community, accessed on January 5, 2026, [https://dev.to/husnain/deploy-comfyui-with-runpod-serverless-1i25](https://dev.to/husnain/deploy-comfyui-with-runpod-serverless-1i25)  
+39. Help installing Comfy's custom nodes on Runpod : r/comfyui \- Reddit, accessed on January 5, 2026, [https://www.reddit.com/r/comfyui/comments/1eneld1/help\_installing\_comfys\_custom\_nodes\_on\_runpod/](https://www.reddit.com/r/comfyui/comments/1eneld1/help_installing_comfys_custom_nodes_on_runpod/)
+
