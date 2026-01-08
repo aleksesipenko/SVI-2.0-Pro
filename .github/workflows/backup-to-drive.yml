@@ -17,10 +17,52 @@ jobs:
         run: |
           zip -r repo-backup.zip . -x ".git/*" "node_modules/*"
 
-      - name: Upload to Google Drive
-        uses: adityak74/google-drive-upload-git-action@main
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          credentials: ${{ secrets.GDRIVE_CREDENTIALS }}
-          filename: repo-backup.zip
-          folderId: ${{ secrets.GDRIVE_FOLDER_ID }}
-          name: SVI-2.0-Pro-backup-${{ github.sha }}.zip
+          python-version: '3.x'
+
+      - name: Install Google Drive API
+        run: |
+          pip install google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
+
+      - name: Upload to Google Drive
+        env:
+          CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
+          FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+        run: |
+          python3 << 'EOF'
+          import os
+          import json
+          from google.oauth2 import service_account
+          from googleapiclient.discovery import build
+          from googleapiclient.http import MediaFileUpload
+          
+          # Load credentials from environment variable
+          creds_json = json.loads(os.environ['CREDENTIALS'])
+          credentials = service_account.Credentials.from_service_account_info(
+              creds_json,
+              scopes=['https://www.googleapis.com/auth/drive.file']
+          )
+          
+          # Build Drive service
+          service = build('drive', 'v3', credentials=credentials)
+          
+          # File to upload
+          filename = 'repo-backup.zip'
+          folder_id = os.environ['FOLDER_ID']
+          
+          # Upload file
+          file_metadata = {
+              'name': f'SVI-2.0-Pro-backup-{os.environ["GITHUB_SHA"][:7]}.zip',
+              'parents': [folder_id]
+          }
+          media = MediaFileUpload(filename, resumable=True)
+          file = service.files().create(
+              body=file_metadata,
+              media_body=media,
+              fields='id, name'
+          ).execute()
+          
+          print(f'File uploaded: {file.get("name")} (ID: {file.get("id")})')
+          EOF
